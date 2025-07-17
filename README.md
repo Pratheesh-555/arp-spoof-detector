@@ -18,6 +18,8 @@ A simple yet powerful GUI-based ARP spoofing detection tool designed to help blu
 ## 🛠️ Installation
 
 pip install -r requirements.txt
+
+
 python app.py
 
 open the web bowser : http://localhost:5002
