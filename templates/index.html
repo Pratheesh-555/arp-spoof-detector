@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARP WATCHDOG</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <style>
+        /* Background and Typography */
+        body {
+            background: linear-gradient(135deg, #000000, #434343);
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        h1, h3 {
+            font-weight: bold;
+        }
+
+        /* Container Styling */
+        .container {
+            background-color: #fff;
+            color: #000;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 50px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Notification Icon */
+        .notification-icon {
+            position: relative;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .notification-icon img {
+            width: 40px;
+        }
+
+        .notification-count {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        /* Notification List */
+        .notification-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            color: #000;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            position: absolute;
+            right: 0;
+            top: 50px;
+            display: none;
+            width: 300px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .notification-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        .notification-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Table Styling */
+        table {
+            color: #000;
+        }
+
+        table th {
+            background-color: #333;
+            color: #fff;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        /* Button Styling */
+        .btn {
+            font-weight: bold;
+            border-radius: 30px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            background-color: #a71d2a;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="text-center">ARP WATCHDOG</h1>
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <!-- Notification Icon -->
+            <div class="notification-icon" id="notificationIcon">
+                <img src="https://img.icons8.com/ios-filled/50/000000/appointment-reminders.png" alt="Notifications">
+                <span id="notificationCount" class="notification-count">0</span>
+            </div>
+
+            <!-- Buttons -->
+            <div>
+                <button class="btn btn-primary" id="saveAsPdf" onclick="generatePDF()">Save as PDF</button>
+                <a href="/logout" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+
+        <!-- Notification List -->
+        <div id="notificationList" class="notification-list">
+            <div class="notification-item">No alerts yet.</div>
+        </div>
+
+        <h3 class="mt-5">ARP Cache</h3>
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th>IP Address</th>
+                    <th>MAC Address</th>
+                </tr>
+            </thead>
+            <tbody id="arpTable">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        var socket = io();
+        var notifications = [];
+        var unreadCount = 0;
+
+        // Show or hide the notification list
+        document.getElementById('notificationIcon').addEventListener('click', function () {
+            var list = document.getElementById('notificationList');
+            list.style.display = list.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Receive new alerts from the server via Socket.io
+        socket.on('new_alert', function (alert) {
+            notifications.push(alert);
+            unreadCount++;
+            document.getElementById('notificationCount').textContent = unreadCount;
+            updateNotificationList();
+        });
+
+        // Update the notification list with the latest alerts
+        function updateNotificationList() {
+            var list = document.getElementById('notificationList');
+            list.innerHTML = '';
+            notifications.forEach(function (notification) {
+                var item = document.createElement('div');
+                item.className = 'notification-item';
+                item.textContent = notification;
+                list.appendChild(item);
+            });
+        }
+
+        // Fetch ARP cache and populate the table
+        function fetchARPData() {
+            fetch('/arp_cache')
+                .then(response => response.json())
+                .then(data => {
+                    var tableBody = document.getElementById('arpTable');
+                    tableBody.innerHTML = '';
+                    for (var ip in data) {
+                        var row = document.createElement('tr');
+                        var ipCell = document.createElement('td');
+                        ipCell.textContent = ip;
+                        var macCell = document.createElement('td');
+                        macCell.textContent = data[ip];
+                        row.appendChild(ipCell);
+                        row.appendChild(macCell);
+                        tableBody.appendChild(row);
+                    }
+                });
+        }
+
+        setInterval(fetchARPData, 5000); // Refresh ARP data every 5 seconds
+
+        // Generate PDF
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const data = await fetch('/arp_cache').then(res => res.json());
+
+            doc.setFontSize(16);
+            doc.text("ARP WATCHDOG Report", 10, 10);
+
+            if (Object.keys(data).length === 0) {
+                doc.setFontSize(12);
+                doc.text("No spoofing data available.", 10, 20);
+            } else {
+                doc.setFontSize(12);
+                doc.text("IP Address", 10, 20);
+                doc.text("MAC Address", 100, 20);
+
+                let y = 30;
+                for (let ip in data) {
+                    doc.text(ip, 10, y);
+                    doc.text(data[ip], 100, y);
+                    y += 10;
+                }
+            }
+
+            doc.save("arp_watchdog_report.pdf");
+        }
+    </script>
+</body>
+
+</html>
