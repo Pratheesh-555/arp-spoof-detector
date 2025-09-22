@@ -126,7 +126,7 @@
 
 <body>
     <div class="container">
-        <h1 class="text-center">ARP WATCHDOG</h1>
+        <h1 class="text-center">ARP EYE</h1>
         <div class="d-flex justify-content-between align-items-center mt-4">
             <!-- Notification Icon -->
             <div class="notification-icon" id="notificationIcon">
@@ -219,7 +219,7 @@
             const data = await fetch('/arp_cache').then(res => res.json());
 
             doc.setFontSize(16);
-            doc.text("ARP WATCHDOG Report", 10, 10);
+            doc.text("ARP EYE Report", 10, 10);
 
             if (Object.keys(data).length === 0) {
                 doc.setFontSize(12);
@@ -237,7 +237,7 @@
                 }
             }
 
-            doc.save("arp_watchdog_report.pdf");
+            doc.save("arp_eye_report.pdf");
         }
     </script>
 </body>
